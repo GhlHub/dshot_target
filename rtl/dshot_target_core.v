@@ -30,8 +30,10 @@ module dshot_target_core(
 
 reg        pin_meta_reg;
 reg        pin_sync_reg;
+reg [4:0]  pin_sample_hist_reg;
+reg        pin_filtered_reg;
 reg        pin_prev_reg;
-reg        rx_active_reg;
+reg [1:0]  state_reg;
 reg        active_level_reg;
 reg        frame_inverted_work_reg;
 reg [15:0] active_count_reg;
@@ -39,14 +41,16 @@ reg [4:0]  bit_count_reg;
 reg [15:0] frame_shift_reg;
 reg [15:0] timeout_count_reg;
 
-reg        reply_pending_reg;
-reg        reply_active_reg;
 reg [15:0] reply_delay_count_reg;
 reg [15:0] reply_bit_count_reg;
 reg [4:0]  reply_bits_left_reg;
 reg [20:0] reply_shift_reg;
 reg [1:0]  idle_stable_count_reg;
 
+localparam [1:0] STATE_IDLE        = 2'd0;
+localparam [1:0] STATE_RX          = 2'd1;
+localparam [1:0] STATE_REPLY_DELAY = 2'd2;
+localparam [1:0] STATE_REPLY_ACTIVE = 2'd3;
 localparam [1:0] RX_ARM_COUNT_MAX = 2'd2;
 
 wire line_edge;
@@ -56,6 +60,13 @@ wire decoded_bit;
 wire [15:0] completed_frame_word;
 wire [3:0]  completed_frame_crc;
 wire        completed_frame_crc_error;
+wire [4:0]  pin_sample_hist_next;
+wire [2:0]  pin_sample_sum;
+wire        pin_filtered_next;
+wire        state_idle;
+wire        state_rx;
+wire        state_reply_delay;
+wire        state_reply_active;
 
 function [15:0] cycles_to_count;
     input [15:0] cycles;
@@ -125,13 +136,22 @@ function [20:0] encode_reply_symbol;
     end
 endfunction
 
-assign line_edge          = (pin_sync_reg != pin_prev_reg);
-assign active_to_inactive = rx_active_reg &&
+assign state_idle         = (state_reg == STATE_IDLE);
+assign state_rx           = (state_reg == STATE_RX);
+assign state_reply_delay  = (state_reg == STATE_REPLY_DELAY);
+assign state_reply_active = (state_reg == STATE_REPLY_ACTIVE);
+assign pin_sample_hist_next = {pin_sample_hist_reg[3:0], pin_sync_reg};
+assign pin_sample_sum      = pin_sample_hist_next[0] + pin_sample_hist_next[1] +
+                             pin_sample_hist_next[2] + pin_sample_hist_next[3] +
+                             pin_sample_hist_next[4];
+assign pin_filtered_next   = (pin_sample_sum >= 3'd3);
+assign line_edge          = (pin_filtered_reg != pin_prev_reg);
+assign active_to_inactive = state_rx &&
                             (pin_prev_reg == active_level_reg) &&
-                            (pin_sync_reg != active_level_reg);
-assign inactive_to_active = rx_active_reg &&
+                            (pin_filtered_reg != active_level_reg);
+assign inactive_to_active = state_rx &&
                             (pin_prev_reg != active_level_reg) &&
-                            (pin_sync_reg == active_level_reg);
+                            (pin_filtered_reg == active_level_reg);
 assign decoded_bit        = (active_count_reg >= pulse_threshold_clks);
 assign completed_frame_word = {frame_shift_reg[14:0], decoded_bit};
 assign completed_frame_crc = frame_inverted_work_reg ?
@@ -139,27 +159,27 @@ assign completed_frame_crc = frame_inverted_work_reg ?
                              dshot_crc12(completed_frame_word[15:4]);
 assign completed_frame_crc_error = (completed_frame_word[3:0] != completed_frame_crc);
 
-assign pin_o         = reply_active_reg ? reply_shift_reg[20] : 1'b1;
-assign pin_oe        = reply_active_reg;
-assign busy          = rx_active_reg | reply_pending_reg | reply_active_reg;
-assign rx_active     = rx_active_reg;
-assign reply_pending = reply_pending_reg;
-assign reply_active  = reply_active_reg;
+assign pin_o         = state_reply_active ? reply_shift_reg[20] : 1'b1;
+assign pin_oe        = state_reply_active;
+assign busy          = !state_idle;
+assign rx_active     = state_rx;
+assign reply_pending = state_reply_delay;
+assign reply_active  = state_reply_active;
 
 always @(posedge clk) begin
     if (rst) begin
         pin_meta_reg           <= 1'b1;
         pin_sync_reg           <= 1'b1;
+        pin_sample_hist_reg    <= 5'b1_1111;
+        pin_filtered_reg       <= 1'b1;
         pin_prev_reg           <= 1'b1;
-        rx_active_reg          <= 1'b0;
+        state_reg              <= STATE_IDLE;
         active_level_reg       <= 1'b1;
         frame_inverted_work_reg <= 1'b0;
         active_count_reg       <= 16'h0000;
         bit_count_reg          <= 5'd0;
         frame_shift_reg        <= 16'h0000;
         timeout_count_reg      <= 16'h0000;
-        reply_pending_reg      <= 1'b0;
-        reply_active_reg       <= 1'b0;
         reply_delay_count_reg  <= 16'h0000;
         reply_bit_count_reg    <= 16'h0000;
         reply_bits_left_reg    <= 5'd0;
@@ -177,18 +197,20 @@ always @(posedge clk) begin
     end else begin
         pin_meta_reg  <= pin_i;
         pin_sync_reg  <= pin_meta_reg;
-        pin_prev_reg  <= pin_sync_reg;
+        pin_sample_hist_reg <= pin_sample_hist_next;
+        pin_prev_reg  <= pin_filtered_reg;
+        pin_filtered_reg <= pin_filtered_next;
         frame_valid   <= 1'b0;
         frame_crc_error <= 1'b0;
         frame_timeout <= 1'b0;
         reply_sent    <= 1'b0;
 
-        if (enable && !rx_active_reg && !reply_pending_reg && !reply_active_reg) begin
+        if (enable && state_idle) begin
             if (line_edge) begin
                 if (idle_stable_count_reg == RX_ARM_COUNT_MAX) begin
-                    rx_active_reg           <= 1'b1;
-                    active_level_reg        <= pin_sync_reg;
-                    frame_inverted_work_reg <= (pin_sync_reg == 1'b0);
+                    state_reg               <= STATE_RX;
+                    active_level_reg        <= pin_filtered_reg;
+                    frame_inverted_work_reg <= (pin_filtered_reg == 1'b0);
                     active_count_reg        <= 16'd1;
                     bit_count_reg           <= 5'd0;
                     frame_shift_reg         <= 16'h0000;
@@ -199,19 +221,19 @@ always @(posedge clk) begin
                 idle_stable_count_reg <= idle_stable_count_reg + 2'd1;
             end
         end else begin
-            if (!rx_active_reg && !reply_pending_reg && !reply_active_reg) begin
+            if (state_idle) begin
                 idle_stable_count_reg <= 2'd0;
             end else begin
                 idle_stable_count_reg <= 2'd0;
 
-                if (rx_active_reg) begin
+                if (state_rx) begin
                     if (frame_timeout_clks != 16'h0000) begin
                         if (line_edge) begin
                             timeout_count_reg <= frame_timeout_clks;
                         end else if (timeout_count_reg != 16'h0000) begin
                             timeout_count_reg <= timeout_count_reg - 16'd1;
                         end else begin
-                            rx_active_reg    <= 1'b0;
+                            state_reg        <= STATE_IDLE;
                             active_count_reg <= 16'h0000;
                             bit_count_reg    <= 5'd0;
                             frame_shift_reg  <= 16'h0000;
@@ -230,12 +252,13 @@ always @(posedge clk) begin
                             end else begin
                                 frame_count_good <= frame_count_good + 32'd1;
                             end
-                            rx_active_reg   <= 1'b0;
 
                             if (frame_inverted_work_reg && !completed_frame_crc_error && reply_enable) begin
-                                reply_pending_reg     <= 1'b1;
+                                state_reg             <= STATE_REPLY_DELAY;
                                 reply_delay_count_reg <= cycles_to_count(reply_delay_clks);
                                 reply_shift_reg       <= encode_reply_symbol(reply_payload_word);
+                            end else begin
+                                state_reg             <= STATE_IDLE;
                             end
                         end else begin
                             frame_shift_reg  <= {frame_shift_reg[14:0], decoded_bit};
@@ -244,15 +267,15 @@ always @(posedge clk) begin
                         active_count_reg <= 16'h0000;
                     end else if (inactive_to_active) begin
                         active_count_reg <= 16'd1;
-                    end else if (pin_sync_reg == active_level_reg) begin
+                    end else if (pin_filtered_reg == active_level_reg) begin
                         active_count_reg <= active_count_reg + 16'd1;
                     end
                 end
 
-                if (reply_active_reg) begin
+                if (state_reply_active) begin
                     if (reply_bit_count_reg == 16'h0000) begin
                         if (reply_bits_left_reg == 5'd1) begin
-                            reply_active_reg    <= 1'b0;
+                            state_reg            <= STATE_IDLE;
                             reply_bits_left_reg <= 5'd0;
                             reply_sent          <= 1'b1;
                             reply_count         <= reply_count + 32'd1;
@@ -264,10 +287,9 @@ always @(posedge clk) begin
                     end else begin
                         reply_bit_count_reg <= reply_bit_count_reg - 16'd1;
                     end
-                end else if (reply_pending_reg) begin
+                end else if (state_reply_delay) begin
                     if (reply_delay_count_reg == 16'h0000) begin
-                        reply_pending_reg   <= 1'b0;
-                        reply_active_reg    <= 1'b1;
+                        state_reg            <= STATE_REPLY_ACTIVE;
                         reply_bits_left_reg <= 5'd21;
                         reply_bit_count_reg <= cycles_to_count(reply_bit_clks);
                     end else begin

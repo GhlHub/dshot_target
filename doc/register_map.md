@@ -32,7 +32,7 @@ All timing fields are expressed in `60 MHz` clock cycles.
 | `[4:2]` | `speed` | loads built-in timing presets |
 | `[5]` | `preserve_timing` | when `1`, `CONTROL` writes update control bits without reloading timing registers from the preset table |
 | `[30:6]` | reserved | write `0` |
-| `[31]` | `irq_state` | live, read-only mirror of the current top-level `irq` output |
+| `[31]` | `irq_state` | read-only mirror of the registered top-level `irq` output |
 
 `enable` behavior:
 
@@ -79,6 +79,8 @@ Bits `[7]`, `[6]`, and `[5]` are write-one-to-clear. Bit `[4]` is live status an
 `STATUS_MASK` mirrors the `STATUS` bit layout.
 
 If any bit is set in both `STATUS` and `STATUS_MASK`, the top-level `irq` output is asserted.
+
+`irq` is registered in the AXI clock domain, so assertion and deassertion follow the masked status condition by one `s_axi_aclk` cycle.
 
 Example:
 

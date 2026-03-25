@@ -64,9 +64,10 @@ The target monitors `pin_i` for an incoming DSHOT frame. If the decoded frame wa
 - Clearing `CONTROL.enable` does not abort an in-flight receive or reply; it blocks new transactions and lets the current one complete.
 - `CONTROL[5]` prevents `CONTROL` writes from reloading `PULSE_THRESHOLD`, `REPLY_DELAY`, `REPLY_BIT`, and `FRAME_TIMEOUT` from the preset table.
 - `CONTROL[4:2]` still reads back the last selected preset code when `CONTROL[5]=1`, but the live timing comes from the timing registers, not from that preset code.
-- `irq` is asserted when any masked `STATUS` bit is high.
+- `irq` is a registered AXI-clock-domain output derived from masked `STATUS` bits, so it changes one `s_axi_aclk` cycle after the masked status condition.
 - `CONTROL[31]` is a read-only mirror of the current top-level `irq` signal.
 - Received command metadata now lives in the RX FIFO rather than in sticky `STATUS` bits.
+- The receive path uses a 5-sample majority-filtered input view of `pin_i` before edge detection and pulse-width decode.
 - Modifying `PULSE_THRESHOLD`, `REPLY_DELAY`, `REPLY_BIT`, or `FRAME_TIMEOUT` while `STATUS.busy=1` leads to unpredictable behavior for the in-flight transaction. Software should only change those registers while idle.
 - Reliable shared-wire operation is centered on bidirectional DSHOT, where the host command is polarity-inverted and the start edge is explicit on the line.
 - Normal-polarity frame capture depends on the external line idle bias providing a visible start transition.

@@ -12,9 +12,11 @@ The design intent is a single `60 MHz` `s_axi_aclk` domain. All timing registers
 
 The target does not see the host's internal `pin_oe`, only the shared wire level on `pin_i`.
 
+The input path uses a 5-sample oversampling filter inside the `60 MHz` clock domain. `pin_i` is first synchronized and then passed through a 5-sample majority filter before edge detection and pulse-width measurement.
+
 Receive sequencing:
 
-1. Detect a line transition and treat the new level as the active pulse level.
+1. Detect a filtered line transition and treat the new level as the active pulse level.
 2. Measure how long the line remains at that active level.
 3. Compare the measured pulse width against `PULSE_THRESHOLD`.
 4. Shift the decoded bit into a 16-bit frame register.

@@ -92,6 +92,7 @@ reg [15:0] frame_timeout_reg;
 reg [31:0] status_mask_reg;
 reg        sticky_reply_sent_reg;
 reg        sticky_frame_timeout_reg;
+reg        irq_reg;
 
 wire       write_fire;
 wire       read_fire;
@@ -135,7 +136,7 @@ assign pulse_threshold_clks = pulse_threshold_reg;
 assign reply_delay_clks    = reply_delay_reg;
 assign reply_bit_clks      = reply_bit_reg;
 assign frame_timeout_clks  = frame_timeout_reg;
-assign irq                 = |(status_readback & status_mask_reg);
+assign irq                 = irq_reg;
 assign rx_fifo_wdata       = {frame_crc_error, frame_inverted, frame_valid, frame_word};
 assign rx_fifo_pop         = read_fire && (araddr_reg == ADDR_RX_FIFO_DATA) && !rx_fifo_empty;
 assign rx_fifo_overflow_clear = write_fire && (awaddr_reg == ADDR_STATUS) && status_wdata[6];
@@ -217,6 +218,7 @@ always @(posedge s_axi_aclk) begin
         status_mask_reg           <= 32'h0000_0000;
         sticky_reply_sent_reg     <= 1'b0;
         sticky_frame_timeout_reg  <= 1'b0;
+        irq_reg                   <= 1'b0;
     end else begin
         if (s_axi_awvalid && s_axi_awready) begin
             awaddr_valid_reg <= 1'b1;
@@ -231,6 +233,7 @@ always @(posedge s_axi_aclk) begin
 
         sticky_reply_sent_reg    <= (sticky_reply_sent_reg & ~sticky_reply_sent_clear) | reply_sent;
         sticky_frame_timeout_reg <= (sticky_frame_timeout_reg & ~sticky_frame_timeout_clear) | frame_timeout;
+        irq_reg                  <= |(status_readback & status_mask_reg);
 
         if (write_fire) begin
             case (awaddr_reg)

@@ -6,8 +6,9 @@ The design intent is a single `60 MHz` `s_axi_aclk` domain.
 
 - AXI-Lite register accesses run on `s_axi_aclk`
 - command pulse-width decode runs on `s_axi_aclk`
+- `pin_i` is synchronized and then observed through a 5-sample majority filter before edge detection and pulse-width measurement
 - reply turnaround and reply bit timing are counted in `60 MHz` clock cycles
-- `irq` is generated from `STATUS & STATUS_MASK`
+- `irq` is a registered AXI-clock-domain output generated from `STATUS & STATUS_MASK`
 - received commands are pushed into a 32-entry RX FIFO as `{frame_crc_error, frame_inverted, frame_valid, frame_word[15:0]}`
 - `REPLY_PAYLOAD` is snapshotted when a valid bidirectional frame finishes decoding, not when reply drive begins
 - bidirectional frames with CRC errors are captured in the RX FIFO but do not trigger replies
