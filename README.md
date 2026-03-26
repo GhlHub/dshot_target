@@ -72,6 +72,16 @@ The target monitors `pin_i` for an incoming DSHOT frame. If the decoded frame wa
 - Reliable shared-wire operation is centered on bidirectional DSHOT, where the host command is polarity-inverted and the start edge is explicit on the line.
 - Normal-polarity frame capture depends on the external line idle bias providing a visible start transition.
 
+## Resource Usage
+
+Vivado out-of-context synthesis estimate for `dshot_target_axil_top` on `xc7a35tcsg324-1`:
+
+- `467` FFs
+- `473` LUTs total
+- `0` block RAM
+
+The 32x19 RX FIFO maps into distributed LUTRAM rather than block RAM.
+
 ## Simulation
 
 Example:
