@@ -3,6 +3,7 @@
 module dshot_target_axil_regs_tb;
 
 localparam [7:0] ADDR_STATUS = 8'h04;
+localparam [7:0] ADDR_EXT_DSHOT_MUX_SELECT = 8'h10;
 
 logic        clk;
 logic        s_axi_aresetn;
@@ -37,6 +38,7 @@ logic [31:0] frame_count_good;
 logic [31:0] frame_count_crc_error;
 logic [31:0] reply_count;
 wire         irq;
+wire         ext_dshot_mux_select;
 logic [31:0] read_data_reg;
 
 dshot_target_axil_regs dut (
@@ -62,6 +64,7 @@ dshot_target_axil_regs dut (
     .enable              (),
     .reply_enable        (),
     .reply_payload_word  (),
+    .ext_dshot_mux_select(ext_dshot_mux_select),
     .pulse_threshold_clks(),
     .reply_delay_clks    (),
     .reply_bit_clks      (),
@@ -108,6 +111,43 @@ task automatic axil_read;
         data = s_axi_rdata;
         @(posedge clk);
         s_axi_rready <= 1'b0;
+    end
+endtask
+
+task automatic axil_write;
+    input logic [7:0]  addr;
+    input logic [31:0] data;
+    logic aw_done;
+    logic w_done;
+    begin
+        aw_done = 1'b0;
+        w_done  = 1'b0;
+
+        @(posedge clk);
+        s_axi_awaddr  <= addr;
+        s_axi_awvalid <= 1'b1;
+        s_axi_wdata   <= data;
+        s_axi_wstrb   <= 4'hF;
+        s_axi_wvalid  <= 1'b1;
+
+        while (!(aw_done && w_done)) begin
+            @(posedge clk);
+            if (s_axi_awvalid && s_axi_awready) begin
+                s_axi_awvalid <= 1'b0;
+                aw_done = 1'b1;
+            end
+            if (s_axi_wvalid && s_axi_wready) begin
+                s_axi_wvalid <= 1'b0;
+                w_done = 1'b1;
+            end
+        end
+
+        s_axi_bready <= 1'b1;
+        while (!s_axi_bvalid) begin
+            @(posedge clk);
+        end
+        @(posedge clk);
+        s_axi_bready <= 1'b0;
     end
 endtask
 
@@ -188,6 +228,26 @@ initial begin
     repeat (4) @(posedge clk);
     s_axi_aresetn = 1'b1;
     repeat (2) @(posedge clk);
+
+    axil_read(ADDR_EXT_DSHOT_MUX_SELECT, read_data_reg);
+    if (read_data_reg !== 32'h0000_0000 || ext_dshot_mux_select !== 1'b0) begin
+        $display("ERROR: ext_dshot_mux_select default mismatch. reg=%h pin=%b", read_data_reg, ext_dshot_mux_select);
+        $fatal;
+    end
+
+    axil_write(ADDR_EXT_DSHOT_MUX_SELECT, 32'h0000_0001);
+    axil_read(ADDR_EXT_DSHOT_MUX_SELECT, read_data_reg);
+    if (read_data_reg !== 32'h0000_0001 || ext_dshot_mux_select !== 1'b1) begin
+        $display("ERROR: ext_dshot_mux_select set mismatch. reg=%h pin=%b", read_data_reg, ext_dshot_mux_select);
+        $fatal;
+    end
+
+    axil_write(ADDR_EXT_DSHOT_MUX_SELECT, 32'h0000_0000);
+    axil_read(ADDR_EXT_DSHOT_MUX_SELECT, read_data_reg);
+    if (read_data_reg !== 32'h0000_0000 || ext_dshot_mux_select !== 1'b0) begin
+        $display("ERROR: ext_dshot_mux_select clear mismatch. reg=%h pin=%b", read_data_reg, ext_dshot_mux_select);
+        $fatal;
+    end
 
     reply_sent    <= 1'b1;
     frame_timeout <= 1'b1;

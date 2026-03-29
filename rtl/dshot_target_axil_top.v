@@ -22,13 +22,15 @@ module dshot_target_axil_top(
     input  wire        s_axi_rready,
     input  wire        pin_i,
     output wire        pin_o,
-    output wire        pin_oe,
+    output wire        pin_oeb,
+    output wire        ext_dshot_mux_select,
     output wire        irq
     );
 
 wire        enable;
 wire        reply_enable;
 wire [15:0] reply_payload_word;
+wire        ext_dshot_mux_select_int;
 wire [15:0] pulse_threshold_clks;
 wire [15:0] reply_delay_clks;
 wire [15:0] reply_bit_clks;
@@ -70,6 +72,7 @@ dshot_target_axil_regs u_dshot_target_axil_regs(
     .enable              (enable),
     .reply_enable        (reply_enable),
     .reply_payload_word  (reply_payload_word),
+    .ext_dshot_mux_select(ext_dshot_mux_select_int),
     .pulse_threshold_clks(pulse_threshold_clks),
     .reply_delay_clks    (reply_delay_clks),
     .reply_bit_clks      (reply_bit_clks),
@@ -90,6 +93,8 @@ dshot_target_axil_regs u_dshot_target_axil_regs(
     .irq                 (irq)
 );
 
+assign ext_dshot_mux_select = ext_dshot_mux_select_int;
+
 dshot_target_core u_dshot_target_core(
     .clk                 (s_axi_aclk),
     .rst                 (~s_axi_aresetn),
@@ -102,7 +107,7 @@ dshot_target_core u_dshot_target_core(
     .reply_bit_clks      (reply_bit_clks),
     .frame_timeout_clks  (frame_timeout_clks),
     .pin_o               (pin_o),
-    .pin_oe              (pin_oe),
+    .pin_oeb             (pin_oeb),
     .busy                (busy),
     .rx_active           (rx_active),
     .reply_pending       (reply_pending),

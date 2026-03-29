@@ -9,8 +9,10 @@ The design intent is a single `60 MHz` `s_axi_aclk` domain.
 - `pin_i` is synchronized and then observed through a 5-sample majority filter before edge detection and pulse-width measurement
 - reply turnaround and reply bit timing are counted in `60 MHz` clock cycles
 - `irq` is a registered AXI-clock-domain output generated from `STATUS & STATUS_MASK`
+- top-level reply drive uses `pin_o` plus active-low output enable `pin_oeb`
 - received commands are pushed into a 32-entry RX FIFO as `{frame_crc_error, frame_inverted, frame_valid, frame_word[15:0]}`
 - `REPLY_PAYLOAD` is snapshotted when a valid bidirectional frame finishes decoding, not when reply drive begins
+- AXI register `0x10[0]` drives top-level output `ext_dshot_mux_select`
 - bidirectional frames with CRC errors are captured in the RX FIFO but do not trigger replies
 - `CONTROL[31]` is a read-only mirror of the current top-level `irq`
 - `CONTROL[5]` is `preserve_timing`

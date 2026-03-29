@@ -12,7 +12,7 @@ proc configure_core_metadata {core} {
     set_property version 1.0 $core
     set_property core_revision 1 $core
     set_property vendor_display_name {User} $core
-    set_property supported_families {artix7 Production kintex7 Production virtex7 Production zynq Production zynquplus Production} $core
+    set_property supported_families {artix7 Production kintex7 Production virtex7 Production zynq Production zynquplus Production spartanuplus Production} $core
 
     ipx::associate_bus_interfaces -busif s_axi -clock s_axi_aclk $core
 

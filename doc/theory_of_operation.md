@@ -47,7 +47,7 @@ the target schedules a reply:
 
 1. wait `REPLY_DELAY` clocks
 2. GCR-encode the 16-bit `REPLY_PAYLOAD` register into a 21-bit reply symbol
-3. drive each symbol bit for `REPLY_BIT` clocks on `pin_o` with `pin_oe` asserted
+3. drive each symbol bit for `REPLY_BIT` clocks on `pin_o` with `pin_oeb` asserted low
 
 The transmitted reply word is exactly the AXI-loaded register contents.
 

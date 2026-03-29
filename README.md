@@ -21,10 +21,10 @@ All AXI-Lite logic, frame decoding, and reply timing use that same clock. The bu
 External interfaces:
 
 - AXI-Lite slave
-- DSHOT pin triplet: `pin_i`, `pin_o`, `pin_oe`
+- DSHOT pin triplet: `pin_i`, `pin_o`, `pin_oeb`
 - interrupt output: `irq`
 
-The target monitors `pin_i` for an incoming DSHOT frame. If the decoded frame was sent with inverted polarity, the target treats it as a bidirectional command and emits a 21-bit GCR-coded reply on `pin_o`/`pin_oe`.
+The target monitors `pin_i` for an incoming DSHOT frame. If the decoded frame was sent with inverted polarity, the target treats it as a bidirectional command and emits a 21-bit GCR-coded reply on `pin_o` with active-low output enable `pin_oeb`.
 
 ## Features
 
@@ -45,6 +45,7 @@ The target monitors `pin_i` for an incoming DSHOT frame. If the decoded frame wa
   - bit `5`: preserve timing registers on `CONTROL` writes
 - `0x08`: status mask
 - `0x0C`: reply payload
+- `0x10`: external DShot mux select
 - `0x14`: pulse-width threshold
 - `0x18`: reply delay
 - `0x1C`: reply bit clocks
@@ -67,6 +68,7 @@ The target monitors `pin_i` for an incoming DSHOT frame. If the decoded frame wa
 - `irq` is a registered AXI-clock-domain output derived from masked `STATUS` bits, so it changes one `s_axi_aclk` cycle after the masked status condition.
 - `CONTROL[31]` is a read-only mirror of the current top-level `irq` signal.
 - Received command metadata now lives in the RX FIFO rather than in sticky `STATUS` bits.
+- AXI register `0x10[0]` directly drives top-level output `ext_dshot_mux_select`.
 - The receive path uses a 5-sample majority-filtered input view of `pin_i` before edge detection and pulse-width decode.
 - Modifying `PULSE_THRESHOLD`, `REPLY_DELAY`, `REPLY_BIT`, or `FRAME_TIMEOUT` while `STATUS.busy=1` leads to unpredictable behavior for the in-flight transaction. Software should only change those registers while idle.
 - Reliable shared-wire operation is centered on bidirectional DSHOT, where the host command is polarity-inverted and the start edge is explicit on the line.

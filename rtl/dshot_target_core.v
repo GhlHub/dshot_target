@@ -12,7 +12,7 @@ module dshot_target_core(
     input  wire [15:0] reply_bit_clks,
     input  wire [15:0] frame_timeout_clks,
     output wire        pin_o,
-    output wire        pin_oe,
+    output wire        pin_oeb,
     output wire        busy,
     output wire        rx_active,
     output wire        reply_pending,
@@ -160,7 +160,7 @@ assign completed_frame_crc = frame_inverted_work_reg ?
 assign completed_frame_crc_error = (completed_frame_word[3:0] != completed_frame_crc);
 
 assign pin_o         = state_reply_active ? reply_shift_reg[20] : 1'b1;
-assign pin_oe        = state_reply_active;
+assign pin_oeb       = !state_reply_active;
 assign busy          = !state_idle;
 assign rx_active     = state_rx;
 assign reply_pending = state_reply_delay;

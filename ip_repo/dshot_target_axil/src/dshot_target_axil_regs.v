@@ -23,6 +23,7 @@ module dshot_target_axil_regs(
     output wire        enable,
     output wire        reply_enable,
     output wire [15:0] reply_payload_word,
+    output wire        ext_dshot_mux_select,
     output wire [15:0] pulse_threshold_clks,
     output wire [15:0] reply_delay_clks,
     output wire [15:0] reply_bit_clks,
@@ -47,6 +48,7 @@ localparam [7:0] ADDR_CONTROL         = 8'h00;
 localparam [7:0] ADDR_STATUS          = 8'h04;
 localparam [7:0] ADDR_STATUS_MASK     = 8'h08;
 localparam [7:0] ADDR_REPLY_PAYLOAD   = 8'h0C;
+localparam [7:0] ADDR_EXT_DSHOT_MUX_SELECT = 8'h10;
 localparam [7:0] ADDR_PULSE_THRESHOLD = 8'h14;
 localparam [7:0] ADDR_REPLY_DELAY     = 8'h18;
 localparam [7:0] ADDR_REPLY_BIT       = 8'h1C;
@@ -85,6 +87,7 @@ reg        reply_enable_reg;
 reg [2:0]  speed_reg;
 reg        preserve_timing_reg;
 reg [15:0] reply_payload_reg;
+reg        ext_dshot_mux_select_reg;
 reg [15:0] pulse_threshold_reg;
 reg [15:0] reply_delay_reg;
 reg [15:0] reply_bit_reg;
@@ -102,6 +105,7 @@ wire [31:0] control_wdata;
 wire [31:0] status_wdata;
 wire [31:0] status_mask_wdata;
 wire [31:0] reply_payload_wdata;
+wire [31:0] ext_dshot_mux_select_wdata;
 wire [31:0] pulse_threshold_wdata;
 wire [31:0] reply_delay_wdata;
 wire [31:0] reply_bit_wdata;
@@ -132,6 +136,7 @@ assign read_fire  = araddr_valid_reg & ~rvalid_reg;
 assign enable              = enable_reg;
 assign reply_enable        = reply_enable_reg;
 assign reply_payload_word  = reply_payload_reg;
+assign ext_dshot_mux_select = ext_dshot_mux_select_reg;
 assign pulse_threshold_clks = pulse_threshold_reg;
 assign reply_delay_clks    = reply_delay_reg;
 assign reply_bit_clks      = reply_bit_reg;
@@ -171,6 +176,7 @@ assign control_wdata         = apply_wstrb32(control_readback, wdata_reg, wstrb_
 assign status_wdata          = apply_wstrb32(32'h0000_0000, wdata_reg, wstrb_reg);
 assign status_mask_wdata     = apply_wstrb32(status_mask_reg, wdata_reg, wstrb_reg);
 assign reply_payload_wdata   = apply_wstrb32({16'h0000, reply_payload_reg}, wdata_reg, wstrb_reg);
+assign ext_dshot_mux_select_wdata = apply_wstrb32({31'h0000_0000, ext_dshot_mux_select_reg}, wdata_reg, wstrb_reg);
 assign pulse_threshold_wdata = apply_wstrb32({16'h0000, pulse_threshold_reg}, wdata_reg, wstrb_reg);
 assign reply_delay_wdata     = apply_wstrb32({16'h0000, reply_delay_reg}, wdata_reg, wstrb_reg);
 assign reply_bit_wdata       = apply_wstrb32({16'h0000, reply_bit_reg}, wdata_reg, wstrb_reg);
@@ -211,6 +217,7 @@ always @(posedge s_axi_aclk) begin
         speed_reg                 <= DSHOT_SPEED_600;
         preserve_timing_reg       <= 1'b0;
         reply_payload_reg         <= 16'h0000;
+        ext_dshot_mux_select_reg  <= 1'b0;
         pulse_threshold_reg       <= 16'd56;
         reply_delay_reg           <= 16'd1800;
         reply_bit_reg             <= 16'd80;
@@ -283,6 +290,9 @@ always @(posedge s_axi_aclk) begin
                 ADDR_REPLY_PAYLOAD: begin
                     reply_payload_reg <= reply_payload_wdata[15:0];
                 end
+                ADDR_EXT_DSHOT_MUX_SELECT: begin
+                    ext_dshot_mux_select_reg <= ext_dshot_mux_select_wdata[0];
+                end
                 ADDR_STATUS_MASK: begin
                     status_mask_reg <= status_mask_wdata;
                 end
@@ -326,6 +336,9 @@ always @(posedge s_axi_aclk) begin
                 end
                 ADDR_REPLY_PAYLOAD: begin
                     rdata_reg <= {16'h0000, reply_payload_reg};
+                end
+                ADDR_EXT_DSHOT_MUX_SELECT: begin
+                    rdata_reg <= {31'h0000_0000, ext_dshot_mux_select_reg};
                 end
                 ADDR_STATUS_MASK: begin
                     rdata_reg <= status_mask_reg;

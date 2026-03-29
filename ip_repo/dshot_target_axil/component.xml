@@ -254,7 +254,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>9b92879f</spirit:value>
+            <spirit:value>301425a6</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -270,7 +270,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>9b92879f</spirit:value>
+            <spirit:value>301425a6</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -619,7 +619,20 @@
         </spirit:wire>
       </spirit:port>
       <spirit:port>
-        <spirit:name>pin_oe</spirit:name>
+        <spirit:name>pin_oeb</spirit:name>
+        <spirit:wire>
+          <spirit:direction>out</spirit:direction>
+          <spirit:wireTypeDefs>
+            <spirit:wireTypeDef>
+              <spirit:typeName>wire</spirit:typeName>
+              <spirit:viewNameRef>xilinx_anylanguagesynthesis</spirit:viewNameRef>
+              <spirit:viewNameRef>xilinx_anylanguagebehavioralsimulation</spirit:viewNameRef>
+            </spirit:wireTypeDef>
+          </spirit:wireTypeDefs>
+        </spirit:wire>
+      </spirit:port>
+      <spirit:port>
+        <spirit:name>ext_dshot_mux_select</spirit:name>
         <spirit:wire>
           <spirit:direction>out</spirit:direction>
           <spirit:wireTypeDefs>
@@ -681,7 +694,7 @@
       <spirit:file>
         <spirit:name>src/dshot_target_axil_top.v</spirit:name>
         <spirit:fileType>verilogSource</spirit:fileType>
-        <spirit:userFileType>CHECKSUM_cb2b290f</spirit:userFileType>
+        <spirit:userFileType>CHECKSUM_8f6e2324</spirit:userFileType>
         <spirit:userFileType>IMPORTED_FILE</spirit:userFileType>
       </spirit:file>
     </spirit:fileSet>
@@ -733,6 +746,7 @@
         <xilinx:family xilinx:lifeCycle="Production">virtex7</xilinx:family>
         <xilinx:family xilinx:lifeCycle="Production">zynq</xilinx:family>
         <xilinx:family xilinx:lifeCycle="Production">zynquplus</xilinx:family>
+        <xilinx:family xilinx:lifeCycle="Production">spartanuplus</xilinx:family>
       </xilinx:supportedFamilies>
       <xilinx:taxonomies>
         <xilinx:taxonomy>/UserIP</xilinx:taxonomy>
@@ -741,14 +755,14 @@
       <xilinx:definitionSource>package_project</xilinx:definitionSource>
       <xilinx:vendorDisplayName>User</xilinx:vendorDisplayName>
       <xilinx:coreRevision>1</xilinx:coreRevision>
-      <xilinx:coreCreationDateTime>2026-03-25T18:56:50Z</xilinx:coreCreationDateTime>
+      <xilinx:coreCreationDateTime>2026-03-29T19:40:57Z</xilinx:coreCreationDateTime>
     </xilinx:coreExtensions>
     <xilinx:packagingInfo>
       <xilinx:xilinxVersion>2025.2</xilinx:xilinxVersion>
       <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="aa2a9f8e"/>
       <xilinx:checksum xilinx:scope="memoryMaps" xilinx:value="c930e363"/>
-      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="48af1b32"/>
-      <xilinx:checksum xilinx:scope="ports" xilinx:value="ad38348b"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="2fbadedb"/>
+      <xilinx:checksum xilinx:scope="ports" xilinx:value="d24751a8"/>
       <xilinx:checksum xilinx:scope="parameters" xilinx:value="e465ae22"/>
     </xilinx:packagingInfo>
   </spirit:vendorExtensions>

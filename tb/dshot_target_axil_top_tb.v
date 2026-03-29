@@ -6,6 +6,7 @@ localparam [7:0] ADDR_CONTROL         = 8'h00;
 localparam [7:0] ADDR_STATUS          = 8'h04;
 localparam [7:0] ADDR_STATUS_MASK     = 8'h08;
 localparam [7:0] ADDR_REPLY_PAYLOAD   = 8'h0C;
+localparam [7:0] ADDR_EXT_DSHOT_MUX_SELECT = 8'h10;
 localparam [7:0] ADDR_PULSE_THRESHOLD = 8'h14;
 localparam [7:0] ADDR_REPLY_DELAY     = 8'h18;
 localparam [7:0] ADDR_REPLY_BIT       = 8'h1C;
@@ -41,7 +42,8 @@ wire [1:0]  s_axi_rresp;
 wire        s_axi_rvalid;
 reg         s_axi_rready;
 wire        pin_o;
-wire        pin_oe;
+wire        pin_oeb;
+wire        ext_dshot_mux_select;
 wire        pin_i;
 wire        irq;
 
@@ -81,12 +83,13 @@ dshot_target_axil_top dut(
     .s_axi_rready (s_axi_rready),
     .pin_i        (pin_i),
     .pin_o        (pin_o),
-    .pin_oe       (pin_oe),
+    .pin_oeb      (pin_oeb),
+    .ext_dshot_mux_select(ext_dshot_mux_select),
     .irq          (irq)
 );
 
 assign shared_line = host_drive_en ? host_drive_val :
-                     pin_oe ? pin_o :
+                     !pin_oeb ? pin_o :
                      idle_level;
 assign pin_i = shared_line;
 
@@ -260,7 +263,7 @@ task ensure_no_reply;
     begin
         for (idx = 0; idx < cycle_count; idx = idx + 1) begin
             @(posedge clk);
-            if (pin_oe) begin
+            if (!pin_oeb) begin
                 $display("ERROR: unexpected target reply at cycle %0d", idx);
                 $fatal;
             end
@@ -301,11 +304,11 @@ task wait_for_reply_start;
     integer watchdog;
     begin
         watchdog = 0;
-        while (!pin_oe && (watchdog < 10000)) begin
+        while (pin_oeb && (watchdog < 10000)) begin
             @(posedge clk);
             watchdog = watchdog + 1;
         end
-        if (!pin_oe) begin
+        if (pin_oeb) begin
             $display("ERROR: timed out waiting for target reply");
             $fatal;
         end
@@ -350,7 +353,7 @@ task check_reply_waveform;
             repeat (reply_bit_clks) @(posedge clk);
         end
 
-        if (pin_oe !== 1'b0) begin
+        if (pin_oeb !== 1'b1) begin
             $display("ERROR: target kept driving after final reply bit");
             $fatal;
         end
@@ -393,6 +396,23 @@ initial begin
     axil_write(ADDR_CONTROL, {27'h0, DSHOT_SPEED_600, 1'b0, 1'b1});
     axil_write(ADDR_REPLY_PAYLOAD, {16'h0000, reply_payload_word});
     axil_write(ADDR_STATUS_MASK, 32'h0000_0010);
+    axil_read(ADDR_EXT_DSHOT_MUX_SELECT, read_data_reg);
+    if (read_data_reg !== 32'h0000_0000 || ext_dshot_mux_select !== 1'b0) begin
+        $display("ERROR: ext_dshot_mux_select default mismatch. reg=%h pin=%b", read_data_reg, ext_dshot_mux_select);
+        $fatal;
+    end
+    axil_write(ADDR_EXT_DSHOT_MUX_SELECT, 32'h0000_0001);
+    axil_read(ADDR_EXT_DSHOT_MUX_SELECT, read_data_reg);
+    if (read_data_reg !== 32'h0000_0001 || ext_dshot_mux_select !== 1'b1) begin
+        $display("ERROR: ext_dshot_mux_select set mismatch. reg=%h pin=%b", read_data_reg, ext_dshot_mux_select);
+        $fatal;
+    end
+    axil_write(ADDR_EXT_DSHOT_MUX_SELECT, 32'h0000_0000);
+    axil_read(ADDR_EXT_DSHOT_MUX_SELECT, read_data_reg);
+    if (read_data_reg !== 32'h0000_0000 || ext_dshot_mux_select !== 1'b0) begin
+        $display("ERROR: ext_dshot_mux_select clear mismatch. reg=%h pin=%b", read_data_reg, ext_dshot_mux_select);
+        $fatal;
+    end
     ensure_no_irq_cycles(8);
 
     host_send_frame(normal_frame, 0, 38, 75, 100);
@@ -663,7 +683,7 @@ initial begin
         $display("ERROR: expected reply_pending before deferred disable during pending. status=%h", read_data_reg);
         $fatal;
     end
-    if (pin_oe !== 1'b0) begin
+    if (pin_oeb !== 1'b1) begin
         $display("ERROR: target started replying before pending-state disable");
         $fatal;
     end
@@ -725,7 +745,7 @@ initial begin
             reg [31:0] status_word;
             wait_for_reply_start;
             repeat (20) @(posedge clk);
-            if (pin_oe !== 1'b1) begin
+            if (pin_oeb !== 1'b0) begin
                 $display("ERROR: target was not actively replying when active-state disable was issued");
                 $fatal;
             end

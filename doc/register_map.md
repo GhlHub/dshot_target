@@ -12,6 +12,7 @@ All timing fields are expressed in `60 MHz` clock cycles.
 | `0x04` | `STATUS` | `RW1C/R` | live state and sticky events |
 | `0x08` | `STATUS_MASK` | `RW` | per-bit interrupt mask matching `STATUS` |
 | `0x0C` | `REPLY_PAYLOAD` | `RW` | 16-bit reply word returned in bidirectional mode |
+| `0x10` | `EXT_DSHOT_MUX_SELECT` | `RW` | software-controlled external DShot mux select output |
 | `0x14` | `PULSE_THRESHOLD` | `RW` | pulse-width threshold for `0` vs `1` decode |
 | `0x18` | `REPLY_DELAY` | `RW` | turnaround delay before the target starts replying |
 | `0x1C` | `REPLY_BIT` | `RW` | clocks per reply symbol bit |
@@ -131,3 +132,12 @@ The payload is GCR-encoded and differentially expanded for line transmission, bu
 The design snapshots `REPLY_PAYLOAD` when a valid bidirectional command frame completes decode and a reply is scheduled. Updating the register while the reply is pending or already transmitting does not change the in-flight reply.
 
 Bidirectional frames with a CRC error are still pushed into `RX_FIFO_DATA`, but they do not schedule a reply.
+
+## `0x10` `EXT_DSHOT_MUX_SELECT`
+
+| Bits | Name | Description |
+| --- | --- | --- |
+| `[0]` | `ext_dshot_mux_select` | software-controlled top-level output |
+| `[31:1]` | reserved | read as `0`, write ignored |
+
+This register is independent of the target receive/reply state machine and updates the exported top-level control signal directly.
